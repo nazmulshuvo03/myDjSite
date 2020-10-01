@@ -1,15 +1,15 @@
-from django.http import HttpResponseRedirect
-from django.shortcuts import render, get_object_or_404
-from django.urls import reverse
-from django.views import generic
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from rest_framework import generics
 
 from .models import Question, Choice
+from .serializer import QuestionSerializer, QuestionChoiceSerializer
 
 
-class IndexView(generic.ListView):
-    template_name = 'polls/index.html'
-    context_object_name = 'latest_question_list'
+class IndexViewSet(generics.ListAPIView):
+    queryset = Question.objects.all()
+    serializer_class = QuestionSerializer
 
     def get_queryset(self):
         return Question.objects.filter(
@@ -17,30 +17,24 @@ class IndexView(generic.ListView):
         ).order_by('-pub_date')[:5]
 
 
-class DetailView(generic.DetailView):
-    model = Question
-    template_name = 'polls/detail.html'
-
-    def get_queryset(self):
-        return Question.objects.filter(pub_date__lte=timezone.now())
+class DetailViewSet(generics.RetrieveAPIView):
+    queryset = Question.objects.all()
+    serializer_class = QuestionSerializer
+    lookup_field = 'pk'
 
 
-class ResultsView(generic.DetailView):
-    model = Question
-    template_name = 'polls/results.html'
+class ResultsViewSet(generics.RetrieveAPIView):
+    queryset = Question.objects.all()
+    serializer_class = QuestionChoiceSerializer
+    lookup_field = 'pk'
 
 
-def vote(request, pk):
+def vote(request, pk, choice):
     question = get_object_or_404(Question, pk=pk)
-    try:
-        selected_choice = question.choice_set.get(pk=request.POST['choice'])
-    except (KeyError, Choice.DoesNotExist):
-        return render(request, 'polls/detail.html', {
-            'question': question,
-            'error_message': "You didn't select a choice."
-        })
-    else:
-        selected_choice.votes += 1
-        selected_choice.save()
+    selected_choice = question.choice_set.get(pk=choice)
+    selected_choice.votes += 1
+    selected_choice.save()
 
-        return HttpResponseRedirect(reverse('polls:results', args=(question.id,)))
+    response = f'Voted successfully to "{selected_choice.choice_text}" for "{question.question_text}"'
+
+    return HttpResponse(response)
