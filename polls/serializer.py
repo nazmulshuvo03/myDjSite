@@ -1,4 +1,4 @@
-from django.contrib.auth.models import Question, Choice
+from .models import Question, Choice
 from rest_framework import serializers
 
 
